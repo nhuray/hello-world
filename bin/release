@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+
+set +x
+set -e
+
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BASE_DIR="$( cd "$BIN_DIR/.." && pwd )"
+cd $BASE_DIR
+
+function print_help() {
+  debug "Usage:"
+  debug "   release "
+  debug "   release [ARGUMENTS]"
+  debug "Arguments:"
+  debug "   ACCOUNT        The aws account id"
+  debug "   VERSION        The service version (eg. 1.2.7, v0.1.3-b12e34f ...)"
+  debug "Sample use:"
+  debug "   release 855854746120 0.1.3"
+  exit 0
+}
+
+# Check arguments
+if [ $# -ne 2 ]; then
+  print_help
+fi
+
+
+service=$(basename $BASE_DIR)
+account=$1
+version=$2
+
+# Build image and push on ECR
+docker build -t ${account}.dkr.ecr.us-east-1.amazonaws.com/hello-world:${version} .
+eval $(aws ecr get-login --region us-east-1)
+docker push ${account}.dkr.ecr.us-east-1.amazonaws.com/hello-world:${version}

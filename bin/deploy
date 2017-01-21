@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+set +x
+set -e
+
+BIN_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+BASE_DIR="$( cd "$BIN_DIR/.." && pwd )"
+cd $BASE_DIR
+
+function print_help() {
+  debug "Usage:"
+  debug "   deploy "
+  debug "   deploy [ARGUMENTS]"
+  debug "Arguments:"
+  debug "   ENVIRONMENT    The environment name (eg. dev, prod ...)"
+  debug "   VERSION        The service version (eg. 1.2.7, v0.1.3-b12e34f ...)"
+  debug "Sample use:"
+  debug "   deploy dev 0.1.3"
+  exit 0
+}
+
+# Check arguments
+if [ $# -ne 2 ]; then
+  print_help
+fi
+
+
+service=$(basename $BASE_DIR)
+environment=$1
+version=$2
+
+# Check secrets file exists
+secrets_file="$BASE_DIR/$environment-secrets.tfvars"
+if [ ! -f "$secrets_file" ]; then
+    echo "Secrets file '$secrets_file' is not defined."
+    exit 1
+fi
+source ${secrets_file}
+
+# Check service directory exists
+TERRAFORM_DIR="$BASE_DIR/.terraform"
+
+bucket="bit-terraform"
+bucket_path="ecs"
+
+# Remove systematically the local state because the remote state might be have modified
+rm -fr $TERRAFORM_DIR
+
+# Set up remote configuration and pull latest version
+run_command="terraform remote config -backend=S3 -backend-config="region=us-east-1" -backend-config="bucket=$bucket" -backend-config="key=$bucket_path/$environment/services/$service.tfstate""
+${run_command}
+
+# Generate terraform module file
+rm -f $BASE_DIR/deploy.tf
+cat > $BASE_DIR/deploy.tf << EOF
+module "deploy" {
+  source = "git::git@github.com:nhuray/devops.git//ecs/services/$service?ref=consul-dns"
+
+  environment_name = "$environment"
+  service_name     = "$service"
+  tag              = "$version"
+  access_key       = "$access_key"
+  secret_key       = "$secret_key"
+  region           = "us-east-1"
+}
+EOF
+
+# Update module
+run_command="terraform get -update"
+${run_command}
+
+# Let's do work!
+echo "Deploying '$service' on '$environment': ${version}"
+run_command="terraform apply -var-file=${secrets_file}"
+${run_command}
+
+# Clean .terraform directory for security
+rm -fr $BASE_DIR/deploy.tf $BASE_DIR/.terraform

@@ -1,10 +1,25 @@
 machine:
   services:
     - docker
+
 dependencies:
+  pre:
+    - curl -Ls https://releases.hashicorp.com/terraform/0.8.4/terraform_0.8.4_linux_amd64.zip -o terraform.zip
+    - unzip terraform.zip -d ~/bin
   override:
     - docker build -t sut .
+
 test:
   override:
     - docker run -d -p 80:80 sut; sleep 10
     - curl --retry 10 --retry-delay 5 -L -I http://localhost:80
+
+deployment:
+  int:
+    branch: master
+    commands:
+      - echo "access_key=${AWS_ACCESS_KEY_ID}" > int-secrets.tfvars
+      - echo "secret_key=${AWS_SECRET_ACCESS_KEY}" >> int-secrets.tfvars
+      - echo "region=us-east-1" >> int-secrets.tfvars
+      - ./bin/release ${AWS_ACCOUNT_ID} ${CIRCLE_SHA1:0:7}
+      - ./bin/deploy int ${CIRCLE_SHA1:0:7}
