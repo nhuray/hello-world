@@ -18,8 +18,8 @@ deployment:
   int:
     branch: master
     commands:
-      - echo "access_key=${AWS_ACCESS_KEY_ID}" > int-secrets.tfvars
-      - echo "secret_key=${AWS_SECRET_ACCESS_KEY}" >> int-secrets.tfvars
-      - echo "region=us-east-1" >> int-secrets.tfvars
+      - echo "access_key=\"${AWS_ACCESS_KEY_ID}\"" > int-secrets.tfvars
+      - echo "secret_key=\"${AWS_SECRET_ACCESS_KEY}\"" >> int-secrets.tfvars
+      - echo "region=\"us-east-1\"" >> int-secrets.tfvars
       - ./bin/release ${AWS_ACCOUNT_ID} ${CIRCLE_SHA1:0:7}
       - ./bin/deploy int ${CIRCLE_SHA1:0:7}
