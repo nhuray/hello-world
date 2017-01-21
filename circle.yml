@@ -5,7 +5,7 @@ machine:
 dependencies:
   pre:
     - curl -Ls https://releases.hashicorp.com/terraform/0.8.4/terraform_0.8.4_linux_amd64.zip -o terraform.zip
-    - unzip terraform.zip -d ~/bin
+    - unzip terraform.zip -d ~/bin && rm -f terraform.zip
   override:
     - docker build -t sut .
 
